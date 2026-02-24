@@ -30,12 +30,14 @@ import { LiveAPIProvider } from './contexts/LiveAPIContext';
 import { useAuth, updateUserSettings } from './lib/auth';
 import { useSettings } from './lib/state';
 
-const API_KEY = process.env.API_KEY;
-if (typeof API_KEY !== 'string') {
-  throw new Error(
-    'Missing required environment variable: API_KEY'
-  );
-}
+const API_KEY =
+  import.meta.env.VITE_GEMINI_API_KEY ||
+  import.meta.env.VITE_API_KEY ||
+  process.env.API_KEY ||
+  process.env.GEMINI_API_KEY ||
+  '';
+
+const hasApiKey = typeof API_KEY === 'string' && API_KEY.trim().length > 0;
 
 /**
  * Main application component that provides a streaming interface for Live API.
@@ -65,6 +67,19 @@ function App() {
 
     return () => unsub();
   }, [user]);
+
+  if (!hasApiKey) {
+    return (
+      <div className="App">
+        <div className="error-screen">
+          <div className="error-message-container">
+            Missing API key. Set <code>VITE_GEMINI_API_KEY</code> in your environment (for Vercel:
+            Project Settings - Environment Variables), then redeploy.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return <LoginModal />;
