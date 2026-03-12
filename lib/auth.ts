@@ -7,10 +7,29 @@ import { createClient } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { ConversationTurn } from './state';
 
-const SUPABASE_URL = 'https://gkaszpjcfdkehoivihju.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrYXN6cGpjZmRrZWhvaXZpaGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3MjQwMjMsImV4cCI6MjA3NTMwMDAyM30.u0dxNr1LbH31OmlT7KzloKI6V_k-8uWOCslg3PE9UYw';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL?.trim();
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+const hasSupabaseConfig = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+let hasLoggedMissingSupabaseConfig = false;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = hasSupabaseConfig
+  ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!)
+  : null;
+
+const getSupabaseClient = () => {
+  if (supabase) {
+    return supabase;
+  }
+
+  if (!hasLoggedMissingSupabaseConfig) {
+    console.warn(
+      'Supabase is disabled because VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing.'
+    );
+    hasLoggedMissingSupabaseConfig = true;
+  }
+
+  return null;
+};
 
 // --- AUTH STORE ---
 interface AuthState {
@@ -50,7 +69,10 @@ export const updateUserSettings = async (
   userId: string,
   newSettings: Partial<{ systemPrompt: string; voice1: string; voice2: string }>
 ) => {
-  const { error } = await supabase
+  const client = getSupabaseClient();
+  if (!client) return Promise.resolve();
+
+  const { error } = await client
     .from('user_settings')
     .upsert({ user_id: userId, ...newSettings });
   if (error) console.error('Error saving settings:', error);
@@ -58,7 +80,10 @@ export const updateUserSettings = async (
 };
 
 export const fetchUserConversations = async (userId: string): Promise<ConversationTurn[]> => {
-  const { data, error } = await supabase
+  const client = getSupabaseClient();
+  if (!client) return [];
+
+  const { data, error } = await client
     .from('translations')
     .select('*')
     .eq('user_id', userId)
@@ -81,7 +106,10 @@ export const updateUserConversations = async (userId: string, turns: Conversatio
   const lastTurn = turns[turns.length - 1];
   if (!lastTurn || !lastTurn.isFinal) return;
 
-  const { error } = await supabase
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
     .from('translations')
     .insert({
       user_id: userId,
@@ -96,7 +124,10 @@ export const updateUserConversations = async (userId: string, turns: Conversatio
 };
 
 export const clearUserConversations = async (userId: string) => {
-  const { error } = await supabase
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  const { error } = await client
     .from('translations')
     .delete()
     .eq('user_id', userId);

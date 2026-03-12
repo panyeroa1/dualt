@@ -88,6 +88,27 @@ export class GenAILiveClient {
     return this._status;
   }
 
+  private emitError(message: string, error?: unknown) {
+    this.emitter.emit(
+      'error',
+      new ErrorEvent('error', {
+        error,
+        message,
+      })
+    );
+  }
+
+  private handleDisconnectedClient() {
+    this.emitError('Client is not connected');
+  }
+
+  private handleSendFailure(message: string, error: unknown) {
+    this._status = 'disconnected';
+    this.session = undefined;
+    console.error(message, error);
+    this.emitError(message, error);
+  }
+
   /**
    * Creates a new GenAILiveClient instance.
    * @param apiKey - API key for authentication with Google GenAI
@@ -149,23 +170,34 @@ export class GenAILiveClient {
 
   public send(parts: Part | Part[], turnComplete: boolean = true) {
     if (this._status !== 'connected' || !this.session) {
-      // FIX: Changed this.emit to this.emitter.emit to fix property does not exist error.
-      this.emitter.emit('error', new ErrorEvent('Client is not connected'));
+      this.handleDisconnectedClient();
       return;
     }
-    this.session.sendClientContent({ turns: parts, turnComplete });
+
+    try {
+      this.session.sendClientContent({ turns: parts, turnComplete });
+    } catch (error) {
+      this.handleSendFailure('Failed to send client content.', error);
+      return;
+    }
+
     this.log(`client.send`, parts);
   }
 
   public sendRealtimeInput(chunks: Array<{ mimeType: string; data: string }>) {
     if (this._status !== 'connected' || !this.session) {
-      // FIX: Changed this.emit to this.emitter.emit to fix property does not exist error.
-      this.emitter.emit('error', new ErrorEvent('Client is not connected'));
+      this.handleDisconnectedClient();
       return;
     }
-    chunks.forEach(chunk => {
-      this.session!.sendRealtimeInput({ media: chunk });
-    });
+
+    try {
+      chunks.forEach(chunk => {
+        this.session!.sendRealtimeInput({ media: chunk });
+      });
+    } catch (error) {
+      this.handleSendFailure('Failed to send realtime input.', error);
+      return;
+    }
 
     let hasAudio = false;
     let hasVideo = false;
@@ -185,17 +217,22 @@ export class GenAILiveClient {
 
   public sendToolResponse(toolResponse: LiveClientToolResponse) {
     if (this._status !== 'connected' || !this.session) {
-      // FIX: Changed this.emit to this.emitter.emit to fix property does not exist error.
-      this.emitter.emit('error', new ErrorEvent('Client is not connected'));
+      this.handleDisconnectedClient();
       return;
     }
-    if (
-      toolResponse.functionResponses &&
-      toolResponse.functionResponses.length
-    ) {
-      this.session.sendToolResponse({
-        functionResponses: toolResponse.functionResponses!,
-      });
+
+    try {
+      if (
+        toolResponse.functionResponses &&
+        toolResponse.functionResponses.length
+      ) {
+        this.session.sendToolResponse({
+          functionResponses: toolResponse.functionResponses!,
+        });
+      }
+    } catch (error) {
+      this.handleSendFailure('Failed to send tool response.', error);
+      return;
     }
 
     this.log(`client.toolResponse`, { toolResponse });
