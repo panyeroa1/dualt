@@ -15,73 +15,92 @@ LiveServerToolCall,
 } from '@google/genai';
 
 const generateSystemPrompt = (lang1: string, lang2: string, topic: string) => {
-const isAuto1 = lang1 === 'auto';
-const isAuto2 = lang2 === 'auto';
+  const isAuto1 = lang1 === 'auto';
+  const isAuto2 = lang2 === 'auto';
 
-// We align: lang1 = Staff, lang2 = Guest
-let instruction = '';
+  let instruction = '';
 
-if (!isAuto1 && isAuto2) {
-// Staff (lang1) is Fixed (e.g. Dutch), Guest (lang2) is Auto
-instruction = `
-The conversation is between a Staff member (always speaking ${lang1}) and a Guest (language to be detected).
+  if (!isAuto1 && isAuto2) {
+    instruction = `
+The conversation is between a Staff member who always speaks ${lang1} and a Guest whose language must be detected.
 
-code
-Code
-download
-content_copy
-expand_less
 RULES:
-1. **Double Interaction Mode**: You are translating for TWO distinct speakers.
-2. **Staff (${lang1})**: When you hear ${lang1}, assume it is the Staff. Translate it IMMEDIATELY to the Guest's language (the language they last spoke).
-   - *Crucial*: If the Guest hasn't spoken yet, or their language is not yet detected, default to English for the Staff's translation.
-3. **Guest (Auto Detect)**: When you hear any language that is NOT ${lang1}, assume it is the Guest. Translate it IMMEDIATELY to ${lang1}.
-4. **Memory**: Lock on to the language detected from the Guest. Use this specific language as the target for all subsequent translations of the Staff's ${lang1} speech.
+1. When you hear ${lang1}, treat that speaker as the Staff member.
+2. Translate Staff speech immediately into the Guest's latest detected language.
+3. Always translate back from ${lang1} into the latest detected Guest language that was spoken most recently.
+4. If the latest detected Guest language is English, the Staff response must be translated into English.
+5. If the Guest has not spoken yet, default the Staff translation to English.
+6. When you hear a language other than ${lang1}, treat that speaker as the Guest and translate immediately into ${lang1}.
+7. Each new Guest utterance replaces the remembered Guest language for the next Staff response.
 
-Example Flow (Staff speaks Dutch):
-- Guest speaks Filipino -> You translate to Dutch.
-- Staff speaks Dutch -> You translate to Filipino.
-- Guest speaks Spanish -> You translate to Dutch.
-- Staff speaks Dutch -> You translate to Spanish.
+Example flow:
+- Guest speaks Filipino -> translate it to ${lang1}.
+- Staff speaks ${lang1} -> translate it to Filipino.
+- Guest speaks English -> translate it to ${lang1}.
+- Staff speaks ${lang1} -> translate it to English.
+- Guest speaks Spanish -> translate it to ${lang1}.
+- Staff speaks ${lang1} -> translate it to Spanish.
 `;
+  } else if (isAuto1 && !isAuto2) {
+    instruction = `
+The conversation is between a Guest who always speaks ${lang2} and a Staff member whose language must be detected.
 
-} else if (isAuto1 && !isAuto2) {
-// Guest (lang2) is Fixed, Staff (lang1) is Auto
-instruction = `
-The conversation is between a Guest (always speaking ${lang2}) and a Staff member (language to be detected).
-
-code
-Code
-download
-content_copy
-expand_less
 RULES:
-1. If you hear ${lang2} (Guest), translate it to the language the Staff most recently spoke (or English if unknown).
-2. If you hear any other language (Staff), translate it to ${lang2}.
+1. When you hear ${lang2}, treat that speaker as the Guest.
+2. Translate Guest speech immediately into the Staff member's latest detected language.
+3. Always translate back from ${lang2} into the latest detected Staff language that was spoken most recently.
+4. If the latest detected Staff language is English, the Guest response must be translated into English.
+5. If the Staff member has not spoken yet, default the Guest translation to English.
+6. When you hear a language other than ${lang2}, treat that speaker as the Staff member and translate immediately into ${lang2}.
+7. Each new Staff utterance replaces the remembered Staff language for the next Guest response.
+
+Example flow:
+- Staff speaks Dutch -> translate it to ${lang2}.
+- Guest speaks ${lang2} -> translate it to Dutch.
+- Staff speaks English -> translate it to ${lang2}.
+- Guest speaks ${lang2} -> translate it to English.
+- Staff speaks Spanish -> translate it to ${lang2}.
+- Guest speaks ${lang2} -> translate it to Spanish.
 `;
+  } else if (isAuto1 && isAuto2) {
+    instruction = `
+Detect the spoken language for each turn.
 
-} else if (isAuto1 && isAuto2) {
-// Both Auto
-instruction = Detect the language of the audio and translate it to English if it is not English. If it is English, translate it to the other detected language from context.;
-} else {
-// Both fixed
-instruction = Translate text from ${lang1} to ${lang2} and vice-versa.;
-}
+RULES:
+1. If the current speech is not English, translate it into English.
+2. If the current speech is English, translate it into the latest detected non-English language from the conversation context.
+3. If no non-English language has been detected yet, keep English output in English.
 
-const topicInstruction = topic ? The conversation is about: ${topic}. Please use appropriate terminology and context. : '';
+Example flow:
+- Speaker uses Spanish -> translate it to English.
+- Speaker uses English -> translate it to Spanish.
+- Speaker uses Dutch -> translate it to English.
+- Speaker uses English -> translate it to Dutch.
+`;
+  } else {
+    instruction = `
+The conversation uses two fixed languages: ${lang1} and ${lang2}.
 
-return `You are an expert, seamless voice interpreter.
+RULES:
+1. If the speaker uses ${lang1}, translate immediately into ${lang2}.
+2. If the speaker uses ${lang2}, translate immediately into ${lang1}.
+`;
+  }
+
+  const topicInstruction = topic
+    ? `The conversation is about ${topic}. Use precise terminology and preserve the intended context.`
+    : '';
+
+  return `You are an expert, seamless voice interpreter.
 ${instruction}
 
 CRITICAL INSTRUCTIONS:
 
-Output ONLY the translated text. Do not include "Translation:", "In Dutch:", or any explanations.
+Output ONLY the translated text. Do not include labels, explanations, or extra commentary.
 
-MIMIC the speaker's voice elements:
+Mimic the speaker's tone, emotion, speed, rhythm, and emphasis.
 
-Tone, emotion, speed, rhythm, emphasis.
-
-If the speaker is whispering, whisper. If they are excited, be excited.
+If the speaker is whispering, whisper. If they are excited, sound excited.
 
 Be accurate in nuance and cultural context.
 
