@@ -25,51 +25,44 @@ const generateSystemPrompt = (lang1: string, lang2: string, topic: string) => {
 The conversation is between a Staff member who always speaks Dutch (${lang1}) and a Guest whose language must be detected.
 
 RULES:
-1. When you hear Dutch (${lang1}), treat that speaker as the Staff member.
-2. Translate Dutch (Staff) speech immediately into the Guest's latest detected language.
-3. Always translate guest speech from any detected language into Dutch (Staff).
-4. Always translate back from Dutch (Staff) into the latest detected Guest language that was spoken most recently.
-5. If no Guest language has been detected yet, keep Dutch (Staff) output in Dutch.
-6. Each new Guest utterance replaces the remembered Guest language for the next Staff response.
-7. CRITICAL: NEVER default to English if the Guest's last spoken language was not English. If the last detected Guest language was Tagalog, you MUST translate Staff speech into Tagalog.
+1. Translate Guest speech from ANY detected language (Tagalog, Arabic, Spanish, etc.) immediately into Dutch (${lang1}).
+2. Translate Staff speech (Dutch) immediately into the Guest's LATEST detected language.
+3. CRITICAL: If the Staff speaks Dutch, you MUST translate it back to the language the Guest just used. Do NOT default to English unless the Guest actually spoke English.
+4. If no Guest language has been detected yet, keep Dutch (Staff) output in Dutch.
+5. Every new Guest utterance defines the target language for the next Staff response.
 
-Example flow:
-- Guest speaks Tagalog -> translate it into Dutch (Staff).
-- Staff speaks Dutch -> translate it into Tagalog.
-- Guest speaks Arabic -> translate it into Dutch (Staff).
-- Staff speaks Dutch -> translate it into Arabic.
-- Guest speaks Spanish -> translate it into Dutch (Staff).
-- Staff speaks Dutch -> translate it into Spanish.
+Example flows:
+- Guest (Tagalog) -> translate into Dutch (Staff).
+- Staff (Dutch) -> translate into Tagalog.
+- Guest (Arabic) -> translate into Dutch (Staff).
+- Staff (Dutch) -> translate into Arabic.
+- Guest (Spanish) -> translate into Dutch (Staff).
+- Staff (Dutch) -> translate into Spanish.
 `;
   } else if (isAuto1 && !isAuto2) {
     instruction = `
-The conversation is between a Guest who always speaks ${lang2} and a Staff member who always speaks Dutch.
+The conversation is between a Guest who always speaks ${lang2} and a Staff member whose language must be detected.
 
 RULES:
-1. When you hear ${lang2}, treat that speaker as the Guest.
-2. Translate Guest speech immediately into Dutch.
-3. Always translate back from Dutch into the latest detected Staff language (Dutch) if they use another language, but primarily assume Staff speaks Dutch.
-4. Always translate Guest speech from ${lang2} into Dutch.
-5. Each new Staff utterance replaces the remembered Staff language for the next Guest response.
-
-Example flow:
-- Staff speaks Dutch -> translate it to ${lang2}.
-- Guest speaks ${lang2} -> translate it to Dutch.
+1. Translate Guest speech (${lang2}) immediately into the Staff member's latest detected language (assumed Dutch).
+2. Translate Staff speech immediately into ${lang2}.
+3. If the Staff speaks Dutch, translate it back to ${lang2}.
+4. If the Staff speaks any other language, translate it back to ${lang2}.
 `;
   } else if (isAuto1 && isAuto2) {
     instruction = `
 Detect the spoken language for each turn. Assume one speaker is Staff (Dutch) and the other is a Guest.
 
 RULES:
-1. Translate Guest speech into Dutch (Staff).
-2. Translate Dutch (Staff) speech into the latest detected Guest language.
-3. If only one language has been detected so far, keep the current speech in its original language.
+1. ALWAYS translate Guest speech into Dutch (Staff).
+2. ALWAYS translate Dutch (Staff) speech into the Guest's LATEST detected language.
+3. NEVER switch to English permanently; only use it if it was the last spoken language.
 
 Example flow:
-- Speaker A uses Tagalog -> detected Tagalog (Guest).
-- Speaker B uses Dutch -> translate B to Tagalog (Staff).
-- Speaker A uses Spanish -> translate A to Dutch (Guest).
-- Speaker B uses Dutch -> translate B to Spanish (Staff).
+- Guest (Tagalog) -> detected Tagalog -> translate to Dutch (Staff).
+- Staff (Dutch) -> translate back to Tagalog.
+- Guest (Arabic) -> detected Arabic -> translate to Dutch (Staff).
+- Staff (Dutch) -> translate back to Arabic.
 `;
   } else {
     instruction = `
@@ -83,12 +76,12 @@ RULES:
 
   const samples = `
 FEW-SHOT EXAMPLES:
-- Guest (Tagalog): Magandang araw sayo, kapatid. -> Translation: Goedendag, broeder. (Detected Tagalog, translating to Dutch Staff)
-- Staff (Dutch): Goedendag, hoe gaat het met jou? -> Translation: Magandang araw, kumusta ka? (Targeting Tagalog Guest)
-- Guest (Arabic): مرحباً، أريد حجز غرفة. -> Translation: Hallo, ik wil een kamer boeken. (Detected Arabic, translating to Dutch Staff)
-- Staff (Dutch): Zeker, voor hoeveel nachten? -> Translation: بالتأكيد، لكم ليلة؟ (Targeting Arabic Guest)
-- Guest (Spanish): ¿Dónde está el ascensor? -> Translation: Waar is de lift? (Detected Spanish, translating to Dutch Staff)
-- Staff (Dutch): Het is om de hoek. -> Translation: Está a la vuelta de la esquina. (Targeting Spanish Guest)
+- Guest (Tagalog): Magandang araw sayo, kapatid. -> Translation: Goedendag, broeder. (Detected Tagalog, translating to Dutch)
+- Staff (Dutch): Goedendag, hoe gaat het met jou? -> Translation: Magandang araw, kumusta ka? (Targeting Tagalog because it was last spoken)
+- Guest (Arabic): مرحباً، أريد حجز غرفة. -> Translation: Hallo, ik wil een kamer boeken. (Detected Arabic, translating to Dutch)
+- Staff (Dutch): Zeker, voor hoeveel nachten? -> Translation: بالتأكيد، لكم ليلة؟ (Targeting Arabic because it was last spoken)
+- Guest (Spanish): ¿Dónde está el ascensor? -> Translation: Waar is de lift? (Detected Spanish, translating to Dutch)
+- Staff (Dutch): Het is om de hoek. -> Translation: Está a la vuelta de la esquina. (Targeting Spanish because it was last spoken)
 `;
 
   const topicInstruction = topic
