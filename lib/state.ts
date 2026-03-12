@@ -34,6 +34,8 @@ RULES:
 7. Each new Guest utterance replaces the remembered Guest language for the next Staff response.
 
 Example flow:
+- Guest speaks Arabic -> translate it to ${lang1}.
+- Staff speaks ${lang1} -> translate it to Arabic.
 - Guest speaks Filipino -> translate it to ${lang1}.
 - Staff speaks ${lang1} -> translate it to Filipino.
 - Guest speaks English -> translate it to ${lang1}.
@@ -55,6 +57,8 @@ RULES:
 7. Each new Staff utterance replaces the remembered Staff language for the next Guest response.
 
 Example flow:
+- Staff speaks Arabic -> translate it to ${lang2}.
+- Guest speaks ${lang2} -> translate it to Arabic.
 - Staff speaks Dutch -> translate it to ${lang2}.
 - Guest speaks ${lang2} -> translate it to Dutch.
 - Staff speaks English -> translate it to ${lang2}.
@@ -72,6 +76,8 @@ RULES:
 3. If no non-English language has been detected yet, keep English output in English.
 
 Example flow:
+- Speaker uses Arabic -> translate it to English.
+- Speaker uses English -> translate it to Arabic.
 - Speaker uses Spanish -> translate it to English.
 - Speaker uses English -> translate it to Spanish.
 - Speaker uses Dutch -> translate it to English.
