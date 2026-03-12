@@ -12,8 +12,8 @@ import { useHistoryStore } from '../lib/history';
 export default function Sidebar() {
   const { isSidebarOpen, toggleSidebar, activeTab, setActiveTab } = useUI();
   const {
-    systemPrompt, voice1, voice2, language1, language2, topic,
-    setSystemPrompt, setLanguage1, setLanguage2, setTopic
+    systemPrompt, voice1, voice2, guestLanguage, staffLanguage, topic,
+    setSystemPrompt, setGuestLanguage, setStaffLanguage, setTopic
   } = useSettings();
   const { connected } = useLiveAPIContext();
   const { isSuperAdmin } = useAuth();
@@ -75,7 +75,7 @@ export default function Sidebar() {
               </label>
               <label>
                 Permanent Staff Language
-                <select value={language1} onChange={e => setLanguage1(e.target.value)}>
+                <select value={staffLanguage} onChange={e => setStaffLanguage(e.target.value)}>
                   {AVAILABLE_LANGUAGES.filter(lang => lang.value !== 'auto').map(lang => (
                     <option key={lang.value} value={lang.value}>
                       {lang.name}
@@ -84,7 +84,7 @@ export default function Sidebar() {
                 </select>
               </label>
               <div className="settings-info-row">
-                <strong>Guest Language:</strong> <span>Auto Detect</span>
+                <strong>Guest Language:</strong> <span>{guestLanguage === 'auto' ? 'Auto Detect' : guestLanguage}</span>
               </div>
               <label>
                 Topic (Optional)

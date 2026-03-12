@@ -20,7 +20,7 @@ import { useAuth, updateUserConversations, fetchUserConversations } from '../../
 
 export default function StreamingConsole() {
   const { client, setConfig } = useLiveAPIContext();
-  const { systemPrompt, voice1, language1, language2, setLastGuestLanguage } = useSettings();
+  const { systemPrompt, voice1, guestLanguage, staffLanguage, lastGuestLanguage, setLastGuestLanguage } = useSettings();
   const { addHistoryItem } = useHistoryStore();
   const { user } = useAuth();
 
@@ -71,13 +71,33 @@ export default function StreamingConsole() {
     const handleInputTranscription = (text: string, isFinal: boolean) => {
       const turns = useLogStore.getState().turns;
       const last = turns[turns.length - 1];
+      
+      // Heuristic for Input: If it contains Dutch-specific characters or common Dutch words, it's likely Staff.
+      // Otherwise, we assume Guest until the model says otherwise.
+      const isDutch = /^[a-zA-Z\s]+$/.test(text) && (
+        text.toLowerCase().includes('ben') || 
+        text.toLowerCase().includes('jij') || 
+        text.toLowerCase().includes('een') || 
+        text.toLowerCase().includes('hoe') ||
+        text.toLowerCase().includes('wat')
+      );
+      const speaker = isDutch ? 'Staff' : 'Guest';
+
       if (last && last.role === 'user' && !last.isFinal) {
         updateLastTurn({
           text: last.text + text,
           isFinal,
+          detectedSpeaker: speaker,
+          detectedLanguage: isDutch ? staffLanguage : (guestLanguage === 'auto' ? lastGuestLanguage : guestLanguage)
         });
       } else {
-        addTurn({ role: 'user', text, isFinal });
+        addTurn({ 
+          role: 'user', 
+          text, 
+          isFinal,
+          detectedSpeaker: speaker,
+          detectedLanguage: isDutch ? staffLanguage : (guestLanguage === 'auto' ? lastGuestLanguage : guestLanguage)
+        });
       }
     };
 
@@ -105,12 +125,21 @@ export default function StreamingConsole() {
 
       if (!text && !groundingChunks) return;
 
-      const turns = useLogStore.getState().turns;
+      const { turns, addTurn, updateLastTurn } = useLogStore.getState();
       const last = turns[turns.length - 1];
+
+      // Heuristic for Output:
+      // If the model output is Dutch, it's a translation for the Staff (Guest was original speaker).
+      // If the model output is anything else, it's a translation for the Guest (Staff was original speaker).
+      const outputIsDutch = (text.toLowerCase().includes('is') || text.toLowerCase().includes('het')) && !/[\u0600-\u06FF]/.test(text);
+      const speakerRole = outputIsDutch ? 'Guest' : 'Staff'; 
+      const targetLang = outputIsDutch ? staffLanguage : (guestLanguage === 'auto' ? lastGuestLanguage : guestLanguage);
 
       if (last?.role === 'agent' && !last.isFinal) {
         const updatedTurn: Partial<ConversationTurn> = {
           text: last.text + text,
+          detectedSpeaker: speakerRole,
+          detectedLanguage: targetLang
         };
         if (groundingChunks) {
           updatedTurn.groundingChunks = [
@@ -120,7 +149,14 @@ export default function StreamingConsole() {
         }
         updateLastTurn(updatedTurn);
       } else {
-        addTurn({ role: 'agent', text, isFinal: false, groundingChunks });
+          addTurn({ 
+            role: 'agent', 
+            text, 
+            isFinal: false, 
+            groundingChunks,
+            detectedSpeaker: speakerRole,
+            detectedLanguage: targetLang
+          });
       }
     };
 
@@ -153,20 +189,31 @@ export default function StreamingConsole() {
             addHistoryItem({
               sourceText: correspondingUserTurn.text.trim(),
               translatedText: translatedText,
-              lang1: language1,
-              lang2: language2
+              lang1: guestLanguage,
+              lang2: staffLanguage
             });
           }
         }
       }
     };
-
     const handleToolCall = (toolCall: LiveServerToolCall) => {
       const fc = toolCall.functionCalls.find(f => f.name === 'report_guest_language');
       if (fc) {
         const { language } = fc.args as any;
         if (language) {
+          const { turns } = useLogStore.getState();
           setLastGuestLanguage(language);
+          
+          // Update the most recent user turn with the detected language and speaker
+          for (let i = turns.length - 1; i >= 0; i--) {
+            if (turns[i].role === 'user') {
+              useLogStore.getState().updateLastTurn({ 
+                detectedSpeaker: 'Guest',
+                detectedLanguage: language 
+              });
+              break;
+            }
+          }
           // Send response back to satisfy the client
           client.sendToolResponse({
             functionResponses: toolCall.functionCalls.map(f => ({
@@ -191,7 +238,7 @@ export default function StreamingConsole() {
       client.off('turncomplete', handleTurnComplete);
       client.off('toolcall', handleToolCall);
     };
-  }, [client, addHistoryItem, user, language1, language2]);
+  }, [client, addHistoryItem, user, guestLanguage, staffLanguage]);
 
   return (
     <div className="transcription-container">
