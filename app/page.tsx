@@ -12,8 +12,8 @@ export default function Home() {
   const [loginCode, setLoginCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const [staffLang, setStaffLang] = useState('nl-BE'); // Flemish Default
-  const [visitorLang, setVisitorLang] = useState('en-US');
+  const [staffLang, setStaffLang] = useState('nl-NL'); 
+  const [visitorLang, setVisitorLang] = useState('auto');
 
   // Added speaker control states to fix missing property errors in TranslationColumn
   const [staffSpeaker, setStaffSpeaker] = useState(true);

@@ -18,6 +18,7 @@ export interface Language {
 }
 
 export const LANGUAGES: Language[] = [
+  { code: 'auto', name: 'Autodetect' },
   { code: 'nl-BE', name: 'Flemish' },
   { code: 'ab-GE', name: 'Abkhaz' },
   { code: 'ace-ID', name: 'Acehnese' },
