@@ -1,0 +1,15 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors 'self' https://aiteksoftware.site https://*.aiteksoftware.site https://botsrhere.online https://*.botsrhere.online;"
+        }
+      ]
+    }
+  ]
+}
