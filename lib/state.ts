@@ -31,14 +31,15 @@ RULES:
 4. If no Guest language has been detected yet, keep Staff output in ${lang1}.
 5. When you hear any language other than ${lang1}, treat that speaker as the Guest and translate immediately into ${lang1}.
 6. Each new Guest utterance replaces the remembered Guest language for the next Staff response.
+7. CRITICAL: NEVER default to English if the Guest's last spoken language was not English. If the last detected Guest language was Tagalog, you MUST translate Staff speech into Tagalog.
 
 Example flow:
+- Guest speaks Tagalog -> translate it to ${lang1}.
+- Staff speaks ${lang1} -> translate it to Tagalog.
 - Guest speaks Arabic -> translate it to ${lang1}.
 - Staff speaks ${lang1} -> translate it to Arabic.
 - Guest speaks Filipino -> translate it to ${lang1}.
 - Staff speaks ${lang1} -> translate it to Filipino.
-- Guest speaks Spanish -> translate it to ${lang1}.
-- Staff speaks ${lang1} -> translate it to Spanish.
 `;
   } else if (isAuto1 && !isAuto2) {
     instruction = `
@@ -51,14 +52,13 @@ RULES:
 4. If no Staff language has been detected yet, keep Guest output in ${lang2}.
 5. When you hear any language other than ${lang2}, treat that speaker as the Staff member and translate immediately into ${lang2}.
 6. Each new Staff utterance replaces the remembered Staff language for the next Guest response.
+7. CRITICAL: NEVER default to English if the Staff's last spoken language was not English.
 
 Example flow:
+- Staff speaks Tagalog -> translate it to ${lang2}.
+- Guest speaks ${lang2} -> translate it to Tagalog.
 - Staff speaks Arabic -> translate it to ${lang2}.
 - Guest speaks ${lang2} -> translate it to Arabic.
-- Staff speaks Dutch -> translate it to ${lang2}.
-- Guest speaks ${lang2} -> translate it to Dutch.
-- Staff speaks Spanish -> translate it to ${lang2}.
-- Guest speaks ${lang2} -> translate it to Spanish.
 `;
   } else if (isAuto1 && isAuto2) {
     instruction = `
@@ -69,8 +69,8 @@ RULES:
 2. If only one language has been detected so far, keep the current speech in its original language.
 
 Example flow:
-- Speaker A uses Arabic -> detected Arabic.
-- Speaker B uses Dutch -> translate B to Arabic.
+- Speaker A uses Tagalog -> detected Tagalog.
+- Speaker B uses Dutch -> translate B to Tagalog.
 - Speaker A uses Spanish -> translate A to Dutch (last detected for B).
 - Speaker B uses English -> translate B to Spanish (last detected for A).
 `;
@@ -86,10 +86,10 @@ RULES:
 
   const samples = `
 FEW-SHOT EXAMPLES:
+- Guest (Tagalog): Magandang araw sayo, kapatid. -> Translation: Goedendag, broeder. (Detected Tagalog)
+- Staff (Dutch): Goedendag, hoe gaat het met jou? -> Translation: Magandang araw, kumusta ka? (Targeting Tagalog)
 - Guest (Arabic): مرحباً، أريد حجز غرفة. -> Translation: Hallo, ik wil een kamer boeken. (Detected Arabic)
 - Staff (Dutch): Zeker, voor hoeveel nachten? -> Translation: بالتأكيد، لكم ليلة؟ (Targeting Arabic)
-- Guest (Filipino): Mayroon din po ba kayong Wi-Fi? -> Translation: Heeft u ook Wi-Fi? (Detected Filipino)
-- Staff (Dutch): Zeker, het wachtwoord is 'GuestLogin2024'. -> Translation: Siyempre, ang password ay 'GuestLogin2024'. (Targeting Filipino)
 - Guest (Spanish): ¿Dónde está el ascensor? -> Translation: Waar is de lift? (Detected Spanish)
 - Staff (Dutch): Het is om de hoek. -> Translation: Está a la vuelta de la esquina. (Targeting Spanish)
 `;
