@@ -14,14 +14,23 @@ FunctionResponseScheduling,
 LiveServerToolCall,
 } from '@google/genai';
 
-const generateSystemPrompt = (lang1: string, lang2: string, topic: string) => {
+const generateSystemPrompt = (lang1: string, lang2: string, topic: string, lastGuestLanguage?: string) => {
   const isAuto1 = lang1 === 'auto';
   const isAuto2 = lang2 === 'auto';
 
   let instruction = '';
 
+  const sessionState = lastGuestLanguage && lastGuestLanguage !== 'none'
+    ? `
+DYNAMIC SESSION STATE:
+- Last Detected Guest Language: ${lastGuestLanguage}
+- Staff Target Language: ${lastGuestLanguage}
+`
+    : '';
+
   if (!isAuto1 && isAuto2) {
     instruction = `
+${sessionState}
 The conversation is between a Staff member who always speaks Dutch (${lang1}) and a Guest whose language must be detected.
 
 RULES:
@@ -125,6 +134,7 @@ voice2: string;
 language1: string;
 language2: string;
 topic: string;
+lastGuestLanguage: string;
 setSystemPrompt: (prompt: string) => void;
 setModel: (model: string) => void;
 setVoice1: (voice: string) => void;
@@ -132,29 +142,35 @@ setVoice2: (voice: string) => void;
 setLanguage1: (language: string) => void;
 setLanguage2: (language: string) => void;
 setTopic: (topic: string) => void;
+setLastGuestLanguage: (language: string) => void;
 }>((set, get) => ({
-systemPrompt: generateSystemPrompt('Dutch (Flemish)', 'auto', ''),
+systemPrompt: generateSystemPrompt('Dutch (Flemish)', 'auto', '', 'none'),
 model: DEFAULT_LIVE_API_MODEL,
 voice1: DEFAULT_VOICE_STAFF,
 voice2: DEFAULT_VOICE_GUEST,
 language1: 'Dutch (Flemish)',
 language2: 'auto',
 topic: '',
+lastGuestLanguage: 'none',
 setSystemPrompt: prompt => set({ systemPrompt: prompt }),
 setModel: model => set({ model }),
 setVoice1: voice => set({ voice1: voice }),
 setVoice2: voice => set({ voice2: voice }),
 setLanguage1: language => set({
 language1: language,
-systemPrompt: generateSystemPrompt(language, get().language2, get().topic)
+systemPrompt: generateSystemPrompt(language, get().language2, get().topic, get().lastGuestLanguage)
 }),
 setLanguage2: language => set({
 language2: language,
-systemPrompt: generateSystemPrompt(get().language1, language, get().topic)
+systemPrompt: generateSystemPrompt(get().language1, language, get().topic, get().lastGuestLanguage)
 }),
 setTopic: topic => set({
 topic: topic,
-systemPrompt: generateSystemPrompt(get().language1, get().language2, topic)
+systemPrompt: generateSystemPrompt(get().language1, get().language2, topic, get().lastGuestLanguage)
+}),
+setLastGuestLanguage: language => set({
+lastGuestLanguage: language,
+systemPrompt: generateSystemPrompt(get().language1, get().language2, get().topic, language)
 }),
 }));
 
