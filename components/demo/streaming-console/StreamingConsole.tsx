@@ -6,20 +6,21 @@
 import { useEffect, useRef } from 'react';
 import WelcomeScreen from '../welcome-screen/WelcomeScreen';
 // FIX: Import LiveServerContent to correctly type the content handler.
-import { Modality, LiveServerContent } from '@google/genai';
+import { Modality, LiveServerContent, LiveServerToolCall } from '@google/genai';
 
 import { useLiveAPIContext } from '../../../contexts/LiveAPIContext';
 import {
   useSettings,
   useLogStore,
   ConversationTurn,
+  declaration,
 } from '../../../lib/state';
 import { useHistoryStore } from '../../../lib/history';
 import { useAuth, updateUserConversations, fetchUserConversations } from '../../../lib/auth';
 
 export default function StreamingConsole() {
   const { client, setConfig } = useLiveAPIContext();
-  const { systemPrompt, voice1, language1, language2 } = useSettings();
+  const { systemPrompt, voice1, language1, language2, setLastGuestLanguage } = useSettings();
   const { addHistoryItem } = useHistoryStore();
   const { user } = useAuth();
 
@@ -56,6 +57,9 @@ export default function StreamingConsole() {
           },
         ],
       },
+      tools: [
+        { functionDeclarations: [declaration] }
+      ],
     };
 
     setConfig(config);
@@ -157,16 +161,35 @@ export default function StreamingConsole() {
       }
     };
 
+    const handleToolCall = (toolCall: LiveServerToolCall) => {
+      const fc = toolCall.functionCalls.find(f => f.name === 'report_guest_language');
+      if (fc) {
+        const { language } = fc.args as any;
+        if (language) {
+          setLastGuestLanguage(language);
+          // Send response back to satisfy the client
+          client.sendToolResponse({
+            functionResponses: toolCall.functionCalls.map(f => ({
+              id: f.id,
+              response: { output: { success: true } }
+            }))
+          });
+        }
+      }
+    };
+
     client.on('inputTranscription', handleInputTranscription);
     client.on('outputTranscription', handleOutputTranscription);
     client.on('content', handleContent);
     client.on('turncomplete', handleTurnComplete);
+    client.on('toolcall', handleToolCall);
 
     return () => {
       client.off('inputTranscription', handleInputTranscription);
       client.off('outputTranscription', handleOutputTranscription);
       client.off('content', handleContent);
       client.off('turncomplete', handleTurnComplete);
+      client.off('toolcall', handleToolCall);
     };
   }, [client, addHistoryItem, user, language1, language2]);
 

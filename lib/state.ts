@@ -12,7 +12,24 @@ FunctionDeclaration,
 FunctionResponse,
 FunctionResponseScheduling,
 LiveServerToolCall,
+Schema,
+Type,
 } from '@google/genai';
+
+export const declaration: FunctionDeclaration = {
+  name: 'report_guest_language',
+  description: 'Report the detected language of the Guest. Use this when the Guest speaks a new language to ensure future translations (especially Staff to Guest) use this language. Provide the language name in English (e.g., "Tagalog", "Japanese", "Arabic").',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      language: {
+        type: Type.STRING,
+        description: 'The name of the detected language in English.',
+      },
+    },
+    required: ['language'],
+  },
+};
 
 const generateSystemPrompt = (lang1: string, lang2: string, topic: string, lastGuestLanguage?: string) => {
   const isAuto1 = lang1 === 'auto';
