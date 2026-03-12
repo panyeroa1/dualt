@@ -151,8 +151,8 @@ export interface LiveClientToolResponse {
 }
 export interface GroundingChunk {
   web?: {
-    uri: string;
-    title: string;
+    uri?: string;
+    title?: string;
   };
 }
 
